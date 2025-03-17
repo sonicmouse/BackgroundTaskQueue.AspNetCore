@@ -1,0 +1,27 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFrameworks>net6.0;net8.0;net9.0</TargetFrameworks>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+
+		<Authors>Andrew Heinlein</Authors>
+		<Version>1.0.0</Version>
+		<Description>Background Task Queue for ASP.NET Core</Description>
+		<PackageId>BackgroundTaskQueue.AspNetCore</PackageId>
+		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<PackageTags>background-tasks;aspnetcore;queue</PackageTags>
+		<RepositoryUrl>https://github.com/sonicmouse/BackgroundTaskQueue.AspNetCore</RepositoryUrl>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<None Include="../README.md" PackagePath="" Pack="true" CopyToOutputDirectory="PreserveNewest" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<FrameworkReference Include="Microsoft.AspNetCore.App" />
+	</ItemGroup>
+
+</Project>
