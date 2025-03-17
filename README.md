@@ -1,6 +1,6 @@
 # BackgroundTaskQueue.AspNetCore
 
-_AspNetCore.BackgroundTaskQueue_ is a lightweight library that provides a robust background task queue for ASP.NET Core applications. It leverages the Task Parallel Library (TPL) Dataflow (specifically, `BufferBlock` and `ActionBlock`) to efficiently queue and process work items in the background, decoupling task production from execution.
+_BackgroundTaskQueue.AspNetCore_ is a lightweight library that provides a robust background task queue for ASP.NET Core applications. It leverages the Task Parallel Library (TPL) Dataflow (specifically, `BufferBlock` and `ActionBlock`) to efficiently queue and process work items in the background, decoupling task production from execution.
 
 ## Features
 
@@ -11,11 +11,6 @@ _AspNetCore.BackgroundTaskQueue_ is a lightweight library that provides a robust
 - **Queue Monitoring:** Get insight into the current queue length.
 
 ## Getting Started
-
-### Prerequisites
-
-- [.NET 9.0 SDK](https://dotnet.microsoft.com/download)
-- An ASP.NET Core project
 
 ### Installation
 
