@@ -1,5 +1,7 @@
 # BackgroundTaskQueue.AspNetCore
 
+![NuGet Version](https://img.shields.io/nuget/v/BackgroundTaskQueue.AspNetCore)
+
 _BackgroundTaskQueue.AspNetCore_ is a lightweight library that provides a robust background task queue for ASP.NET Core applications. It leverages the Task Parallel Library (TPL) Dataflow (specifically, `BufferBlock` and `ActionBlock`) to efficiently queue and process work items in the background, decoupling task production from execution.
 
 ## Features
@@ -43,7 +45,7 @@ Inject the `IOffloadWorkService` into your controller or service and use it to q
 
 ```csharp
 using Microsoft.AspNetCore.Mvc;
-using AspNetCore.BackgroundTaskQueue;
+using BackgroundTaskQueue.AspNetCore;
 
 [ApiController]
 [Route("[controller]")]
