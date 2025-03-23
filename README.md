@@ -27,27 +27,27 @@ builder.Services.AddOffloadWorkService();
 Or customize the default configuration:
 
 ```csharp
-builder.Services.AddOffloadWorkService(options =>
+builder.Services.AddOffloadWorkService((OffloadWorkServiceOptions opt) =>
 {
     // Controls how many tasks can run concurrently
-    options.MaxDegreeOfParallelism = 5;
+    opt.MaxDegreeOfParallelism = 5;
     // Limits the number of active tasks (-1 for unlimited)
-    options.BoundedCapacity = 100;
+    opt.BoundedCapacity = 100;
 });
 ```
 
 Or define multiple named categories:
 
 ```csharp
-builder.Services.AddOffloadWorkService(categories =>
+builder.Services.AddOffloadWorkService((OffloadWorkServiceCategoryOptions cat) =>
 {
-    categories.AddCategory("email", new OffloadWorkServiceOptions
+    cat.AddCategory("email", new OffloadWorkServiceOptions
     {
         MaxDegreeOfParallelism = 2,
         BoundedCapacity = 10
     });
 
-    categories.AddCategory("pdf", new OffloadWorkServiceOptions
+    cat.AddCategory("pdf", new OffloadWorkServiceOptions
     {
         MaxDegreeOfParallelism = 4,
         BoundedCapacity = -1 // unbounded
