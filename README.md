@@ -138,12 +138,11 @@ If registered, it will be used in place of the default `ILogger<OffloadWorkServi
 
 ## Behavior
 
-- `BoundedCapacity` is total active + queued items  
-- Offload returns `false` if the queue is full or not initialized  
-- Background tasks receive a scoped `IServiceProvider`  
-- Cancellation tokens are honored during shutdown  
-- Logging is customizable but falls back to `ILogger` if needed  
-- Default category name is hidden when passed to custom loggers
+- `BoundedCapacity` is total active + queued items
+- Offload returns `false` if the queue is full
+- Background tasks receive a scoped `IServiceProvider`
+- Cancellation tokens are honored during shutdown
+- Logging is customizable but falls back to `ILogger` if needed 
 
 ## Clean Shutdown
 
