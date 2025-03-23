@@ -1,12 +1,11 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
 	<PropertyGroup>
 		<TargetFrameworks>net6.0;net8.0;net9.0</TargetFrameworks>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 
 		<Authors>Andrew Heinlein</Authors>
-		<Version>1.0.0</Version>
+		<Version>2.0.0</Version>
 		<Description>Background Task Queue for ASP.NET Core</Description>
 		<PackageId>BackgroundTaskQueue.AspNetCore</PackageId>
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
@@ -17,11 +16,24 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<None Include="../README.md" PackagePath="" Pack="true" CopyToOutputDirectory="PreserveNewest" />
+		<FrameworkReference Include="Microsoft.AspNetCore.App" />
 	</ItemGroup>
 
 	<ItemGroup>
-		<FrameworkReference Include="Microsoft.AspNetCore.App" />
+		<None Include="../README.md" PackagePath="" Pack="true" CopyToOutputDirectory="PreserveNewest" />
+	</ItemGroup>
+
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+		<NoWarn>1701;1702;IDE0290</NoWarn>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+		<NoWarn>1701;1702;IDE0290</NoWarn>
+		<WarningsAsErrors>true</WarningsAsErrors>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<InternalsVisibleTo Include="BackgroundTaskQueue.AspNetCore.Tests" />
 	</ItemGroup>
 
 </Project>

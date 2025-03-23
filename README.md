@@ -1,84 +1,107 @@
 # BackgroundTaskQueue.AspNetCore
 
-[![NuGet Version](https://img.shields.io/nuget/v/BackgroundTaskQueue.AspNetCore)](https://www.nuget.org/packages/BackgroundTaskQueue.AspNetCore/1.0.0)
+[![NuGet Version](https://img.shields.io/nuget/v/BackgroundTaskQueue.AspNetCore)](https://www.nuget.org/packages/BackgroundTaskQueue.AspNetCore)
 
-_BackgroundTaskQueue.AspNetCore_ is a lightweight library that provides a robust background task queue for ASP.NET Core applications. It leverages the Task Parallel Library (TPL) Dataflow (specifically, `BufferBlock` and `ActionBlock`) to efficiently queue and process work items in the background, decoupling task production from execution.
+A simple and scalable way to queue fire-and-forget background work in ASP.NET Core using dependency injection, scoped lifetimes, and category-based parallelism.
+
+This service enables background work execution without requiring hosted services in your own code, while supporting graceful shutdown, cancellation, and error handling.
 
 ## Features
 
-- **Asynchronous Task Offloading:** Easily offload work from transient components (e.g., controllers, services) to a shared background worker.
-- **Scoped Dependency Resolution:** Each queued work item executes within its own DI scope, ensuring that services are correctly instantiated and disposed.
-- **Controlled Concurrency:** Configure the maximum degree of parallelism to limit concurrent execution.
-- **Cancellation Support:** Work items respect cancellation tokens, ensuring graceful shutdown of the background processing.
-- **Queue Monitoring:** Get insight into the current queue length.
+- Scoped dependency injection for background tasks  
+- Optional named categories with configurable concurrency and queueing  
+- Bounded capacity with task rejection  
+- Graceful cancellation on shutdown  
+- Customizable exception logging via `IOffloadWorkExceptionLogger`
+- Agressive unit testing
 
-## Getting Started
+## Installation
 
-### Installation
-
-Clone this repository or add the project to your solution. Then, register the service using the provided extension method.
-
-## Usage
-
-### Registering the Service
-
-In your `Program.cs` or `Startup.cs`, register the background task queue service with optional configuration settings. The example below demonstrates how to add the service and customize options such as the maximum degree of parallelism and bounded capacity:
+Register the service with default configuration:
 
 ```csharp
-// In Program.cs or Startup.cs
+// Defaults to a MaxDegreeOfParallelism of 3, unbounded capacity
+builder.Services.AddOffloadWorkService();
+```
+
+Or customize the default configuration:
+
+```csharp
 builder.Services.AddOffloadWorkService(options =>
 {
-    options.MaxDegreeOfParallelism = 5; // Controls how many tasks can run concurrently
-    options.BoundedCapacity = -1; // Limits the number of enqueued tasks (-1 for unlimited)
+    // Controls how many tasks can run concurrently
+    options.MaxDegreeOfParallelism = 5;
+    // Limits the number of active tasks (-1 for unlimited)
+    options.BoundedCapacity = 100;
 });
 ```
 
-### Default Configuration
-- **MaxDegreeOfParallelism**: `3` (Only three tasks run concurrently)
-- **BoundedCapacity**: `-1` (Unlimited queue capacity)
-
-The `MaxDegreeOfParallelism` setting limits the number of tasks executing **simultaneously**, but does **not** restrict the total number of tasks that can be enqueued. The `BoundedCapacity` setting defines the maximum number of tasks that can be queued before rejecting additional work.
-
-### Offloading Work
-
-Inject the `IOffloadWorkService` into your controller or service and use it to queue work. Each work item receives the current `IServiceProvider` and a cancellation token, making it safe to resolve scoped services.
+Or define multiple named categories:
 
 ```csharp
-using Microsoft.AspNetCore.Mvc;
-using BackgroundTaskQueue.AspNetCore;
-
-[ApiController]
-[Route("[controller]")]
-public class WorkController : ControllerBase
+builder.Services.AddOffloadWorkService(categories =>
 {
-    private readonly IOffloadWorkService _offloadWorkService;
-
-    public WorkController(IOffloadWorkService offloadWorkService)
+    categories.AddCategory("email", new OffloadWorkServiceOptions
     {
-        _offloadWorkService = offloadWorkService;
-    }
+        MaxDegreeOfParallelism = 2,
+        BoundedCapacity = 10
+    });
 
-    [HttpPost("do-work")]
-    public IActionResult DoWork([FromQuery] string param)
+    categories.AddCategory("pdf", new OffloadWorkServiceOptions
     {
-        // Offload a background task
-        var accepted = _offloadWorkService.Offload(async (serviceProvider, myParam, cancellationToken) =>
-        {
-            // Resolve a service
-            var myService = serviceProvider.GetRequiredService<IMyService>();
+        MaxDegreeOfParallelism = 4,
+        BoundedCapacity = -1 // unbounded
+    });
+});
+```
 
-            // Execute some work asynchronously
-            await myService.DoWorkAsync(myParam, cancellationToken);
-        }, param);
+## Usage
 
-        if (accepted)
-        {
-            return Accepted();
-        }
+Inject `IOffloadWorkService` into your controller or service.
 
-        // The BoundedCapacity of the queue has been reached. Let caller know.
-        return StatusCode(StatusCodes.Status429TooManyRequests, "Task queue is full.");
+```csharp
+public sealed class MyController: ControllerBase
+{
+    private readonly IOffloadWorkService _offloader;
+
+    public MyController(IOffloadWorkService offloadWorkService)
+    {
+        _offloader = offloadWorkService;
     }
+}
+```
+
+**Offload to the default category:**
+
+```csharp
+[HttpPost, Route("reindex")]
+public IActionResult Reindex()
+{
+    var accepted = _offloader.Offload(async (sp, _, ct) =>
+    {
+        var search = sp.GetRequiredService<ISearchIndexer>();
+        await search.ReindexAsync(ct);
+    }, param: default);
+
+    return accepted ? Accepted() :
+        StatusCode(StatusCodes.Status429TooManyRequests, "Queue full");
+}
+```
+
+**Offload to a named category:**
+
+```csharp
+[HttpPost, Route("send-email")]
+public IActionResult SendEmail([FromBody] EmailRequest request)
+{
+    var accepted = _offloader.Offload("email", async (sp, data, ct) =>
+    {
+        var sender = sp.GetRequiredService<IEmailSender>();
+        await sender.SendAsync(data.To, data.Subject, data.Body, ct);
+    }, request);
+
+    return accepted ? Accepted() :
+        StatusCode(StatusCodes.Status429TooManyRequests, "Email queue full");
 }
 ```
 
@@ -87,21 +110,47 @@ public class WorkController : ControllerBase
 You can also retrieve the current length of the task queue for monitoring or logging purposes:
 
 ```csharp
-int queueLength = _offloadWorkService.GetQueueLength();
+var queueLength = _offloader.GetActiveCount();
+var queueLengthEmail = _offloader.GetActiveCount("email");
 ```
 
-## How It Works
+## Custom Exception Logging
 
-The core of the library is the `OffloadWorkService`, which implements both `IOffloadWorkService` and `IHostedService` (via `BackgroundService`). It uses:
+Implement a custom logger to capture exceptions from background tasks.
 
-- `BufferBlock<Func<Task>>`: Acts as the work queue. Each enqueued work item is a lambda (a `Func<Task>`) that encapsulates the work to be performed.
-- `ActionBlock<Func<Task>>`: Processes the queued work items with a configurable maximum degree of parallelism. It ensures that each task runs safely within its own dependency injection scope.
-- **Cancellation Tokens**: The service creates a linked cancellation token combining the ASP.NET Core host’s token and an internal token. This ensures that tasks respect shutdown signals.
-- **Scoped Work Execution**: Each work item is executed by first creating an `AsyncServiceScope` (using the injected `IServiceScopeFactory`), ensuring that all DI dependencies are properly resolved and disposed after use.
+```csharp
+public sealed class MyExceptionLogger : IOffloadWorkExceptionLogger
+{
+    public void Log(Exception ex, string? category)
+    {
+        // Send to telemetry, logger, etc.
+    }
+}
+```
+
+Register it:
+
+```csharp
+builder.Services.AddTransient<IOffloadWorkExceptionLogger, MyExceptionLogger>();
+```
+
+If registered, it will be used in place of the default `ILogger<OffloadWorkService>` for exceptions.
+
+## Behavior
+
+- `BoundedCapacity` is total active + queued items  
+- Offload returns `false` if the queue is full or not initialized  
+- Background tasks receive a scoped `IServiceProvider`  
+- Cancellation tokens are honored during shutdown  
+- Logging is customizable but falls back to `ILogger` if needed  
+- Default category name is hidden when passed to custom loggers
+
+## Clean Shutdown
+
+The service cancels all running and queued tasks during shutdown using linked cancellation tokens. Resources are disposed automatically.
 
 ## Contributing
 Contributions are welcome! If you have improvements or bug fixes, please open an issue or submit a pull request.
 
 ## License
 This project is licensed under the [MIT License](LICENSE.txt).
-
