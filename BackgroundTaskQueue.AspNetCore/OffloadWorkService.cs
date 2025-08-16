@@ -19,22 +19,22 @@ namespace BackgroundTaskQueue.AspNetCore
 		/// <summary>
 		/// Offloads a unit of work to the default background category for execution.
 		/// </summary>
-		/// <typeparam name="T">The type of the parameter passed to the work delegate.</typeparam>
+		/// <typeparam name="TState">The type of the state parameter passed to the work delegate.</typeparam>
 		/// <param name="work">The delegate to execute. It receives the scoped service provider, the input parameter, and a cancellation token.</param>
-		/// <param name="param">The parameter passed to the work delegate.</param>
+		/// <param name="state">The state parameter passed to the work delegate.</param>
 		/// <returns>True if the work was accepted; false if it was rejected due to capacity limits or shutdown.</returns>
-		bool Offload<T>(Func<IServiceProvider, T, CancellationToken, Task> work, T param);
+		bool Offload<TState>(Func<IServiceProvider, TState, CancellationToken, Task> work, TState state);
 
 		/// <summary>
 		/// Offloads a unit of work to a specific named category for execution.
 		/// </summary>
-		/// <typeparam name="T">The type of the parameter passed to the work delegate.</typeparam>
+		/// <typeparam name="TState">The type of the state parameter passed to the work delegate.</typeparam>
 		/// <param name="categoryName">The name of the category to route the work to.</param>
 		/// <param name="work">The delegate to execute. It receives the scoped service provider, the input parameter, and a cancellation token.</param>
-		/// <param name="param">The parameter passed to the work delegate.</param>
+		/// <param name="state">The state parameter passed to the work delegate.</param>
 		/// <returns>True if the work was accepted; false if it was rejected due to capacity limits or shutdown.</returns>
-		bool Offload<T>(string categoryName,
-			Func<IServiceProvider, T, CancellationToken, Task> work, T param);
+		bool Offload<TState>(string categoryName,
+			Func<IServiceProvider, TState, CancellationToken, Task> work, TState state);
 
 		/// <summary>
 		/// Gets the number of currently active (running + queued) work items in the default category.
@@ -78,11 +78,11 @@ namespace BackgroundTaskQueue.AspNetCore
 			_logger = logger;
 		}
 
-		public bool Offload<T>(Func<IServiceProvider, T, CancellationToken, Task> work, T param)
+		public bool Offload<TState>(Func<IServiceProvider, TState, CancellationToken, Task> work, TState state)
 		{
 			try
 			{
-				return Offload(OffloadWorkServiceExtensions.DefaultCategoryName, work, param);
+				return Offload(OffloadWorkServiceExtensions.DefaultCategoryName, work, state);
 			}
 			catch (InvalidOperationException)
 			{
@@ -91,8 +91,8 @@ namespace BackgroundTaskQueue.AspNetCore
 			}
 		}
 
-		public bool Offload<T>(string categoryName,
-			Func<IServiceProvider, T, CancellationToken, Task> work, T param)
+		public bool Offload<TState>(string categoryName,
+			Func<IServiceProvider, TState, CancellationToken, Task> work, TState state)
 		{
 			if (_state.CategoryStates.TryGetValue(categoryName, out var catDesc))
 			{
@@ -108,7 +108,7 @@ namespace BackgroundTaskQueue.AspNetCore
 
 					if (catDesc.StagingBlock.Post(() =>
 					{
-						return RunServiceScopedTask(serviceScope, work, param, _logger, catDesc);
+						return RunServiceScopedTask(serviceScope, work, state, _logger, catDesc);
 					}))
 					{
 						Interlocked.Increment(ref catDesc.ActiveCount);
@@ -146,8 +146,8 @@ namespace BackgroundTaskQueue.AspNetCore
 			throw new InvalidOperationException($"The category '{categoryName}' is not registered.");
 		}
 
-		private static async Task RunServiceScopedTask<T>(AsyncServiceScope asyncServiceScope,
-			Func<IServiceProvider, T, CancellationToken, Task> work, T param, ILogger logger,
+		private static async Task RunServiceScopedTask<TState>(AsyncServiceScope asyncServiceScope,
+			Func<IServiceProvider, TState, CancellationToken, Task> work, TState state, ILogger logger,
 			CategoryState catDesc)
 		{
 			await using (asyncServiceScope)
@@ -155,7 +155,7 @@ namespace BackgroundTaskQueue.AspNetCore
 				var sp = asyncServiceScope.ServiceProvider;
 				try
 				{
-					await work(sp, param, catDesc.CancellationTokenSource.Token);
+					await work(sp, state, catDesc.CancellationTokenSource.Token);
 				}
 				catch (OperationCanceledException)
 				{
@@ -317,6 +317,19 @@ namespace BackgroundTaskQueue.AspNetCore
 		/// </summary>
 		/// <param name="name">The unique name of the category.</param>
 		public void AddCategory(string name) => AddCategory(name, new());
+
+		/// <summary>
+		/// Adds the default category with the specified options.
+		/// </summary>
+		/// <param name="options">The configuration options for the category (e.g., capacity, parallelism).</param>
+		public void AddDefaultCategory(OffloadWorkServiceOptions options) =>
+			AddCategory(OffloadWorkServiceExtensions.DefaultCategoryName, options);
+
+		/// <summary>
+		/// Adds the default category.
+		/// </summary>
+		public void AddDefaultCategory() =>
+			AddDefaultCategory(new());
 
 		internal IReadOnlyDictionary<string, OffloadWorkServiceOptions> GetCategories() =>
 			new ReadOnlyDictionary<string, OffloadWorkServiceOptions>(_categories);

@@ -5,7 +5,7 @@
 		<Nullable>enable</Nullable>
 
 		<Authors>Andrew Heinlein</Authors>
-		<Version>2.0.1</Version>
+		<Version>2.1.0</Version>
 		<Description>Background Task Queue for ASP.NET Core</Description>
 		<PackageId>BackgroundTaskQueue.AspNetCore</PackageId>
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
@@ -13,6 +13,7 @@
 		<PackageTags>background-tasks;aspnetcore;queue</PackageTags>
 		<RepositoryUrl>https://github.com/sonicmouse/BackgroundTaskQueue.AspNetCore</RepositoryUrl>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<PackageIcon>icon.png</PackageIcon>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -21,6 +22,7 @@
 
 	<ItemGroup>
 		<None Include="../README.md" PackagePath="" Pack="true" CopyToOutputDirectory="PreserveNewest" />
+		<None Include="icon.png" Pack="true" PackagePath="" />
 	</ItemGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">

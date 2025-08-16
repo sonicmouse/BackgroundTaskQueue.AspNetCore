@@ -147,6 +147,59 @@ namespace BackgroundTaskQueue.AspNetCore.Tests
 			});
 		}
 
+		[Fact]
+		public Task CategoryWidthDefaultHappyPath()
+		{
+			return RunWithOffloadServiceAsync(services =>
+			{
+				services.AddOffloadWorkService((OffloadWorkServiceCategoryOptions b) =>
+				{
+					b.AddCategory("Test Category", new()
+					{
+						BoundedCapacity = -1,
+						MaxDegreeOfParallelism = 3
+					});
+					b.AddCategory("Another Category", new()
+					{
+						BoundedCapacity = -1,
+						MaxDegreeOfParallelism = 3
+					});
+					b.AddDefaultCategory();
+				});
+				return CancellationToken.None;
+			},
+			async (service, logger) =>
+			{
+				var tcs1 = new TaskCompletionSource();
+				var tcs2 = new TaskCompletionSource();
+				var tcs3 = new TaskCompletionSource();
+
+				service.Offload("Test Category", (_, param, _) =>
+				{
+					Assert.Equal("hello", param);
+					tcs1.SetResult();
+					return Task.CompletedTask;
+				}, "hello");
+
+				service.Offload("Another Category", (_, param, _) =>
+				{
+					Assert.Equal("world", param);
+					tcs2.SetResult();
+					return Task.CompletedTask;
+				}, "world");
+
+				service.Offload((_, param, _) =>
+				{
+					Assert.Equal("default", param);
+					tcs3.SetResult();
+					return Task.CompletedTask;
+				}, "default");
+
+				await Task.WhenAll(tcs1.Task, tcs2.Task, tcs3.Task);
+				Assert.Empty(logger.Entries);
+			});
+		}
+
 		[Fact] public Task ValidateCategoryNotRegisteredError()
 		{
 			return RunWithOffloadServiceAsync(services =>
