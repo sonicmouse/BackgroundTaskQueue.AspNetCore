@@ -81,7 +81,7 @@ public IActionResult Reindex()
     {
         var search = sp.GetRequiredService<ISearchIndexer>();
         await search.ReindexAsync(ct);
-    }, param: default);
+    }, state: default);
 
     return accepted ? Accepted() :
         StatusCode(StatusCodes.Status429TooManyRequests, "Queue full");
@@ -94,11 +94,30 @@ public IActionResult Reindex()
 [HttpPost, Route("send-email")]
 public IActionResult SendEmail([FromBody] EmailRequest request)
 {
-    var accepted = _offloader.Offload("email", async (sp, data, ct) =>
+    var accepted = _offloader.Offload("email", async (sp, _, ct) =>
     {
         var sender = sp.GetRequiredService<IEmailSender>();
-        await sender.SendAsync(data.To, data.Subject, data.Body, ct);
-    }, request);
+        await sender.SendAsync(request.To, request.Subject, request.Body, ct);
+    }, state: default);
+
+    return accepted ? Accepted() :
+        StatusCode(StatusCodes.Status429TooManyRequests, "Email queue full");
+}
+```
+
+**Offload and avoid closures:**
+
+```csharp
+[HttpPost, Route("send-email")]
+public IActionResult SendEmail([FromBody] EmailRequest request)
+{
+    var state = (request.To, request.Subject, request.Body);
+
+    var accepted = _offloader.Offload("email", async static (sp, state, ct) =>
+    {
+        var sender = sp.GetRequiredService<IEmailSender>();
+        await sender.SendAsync(state.To, state.Subject, state.Body, ct);
+    }, state);
 
     return accepted ? Accepted() :
         StatusCode(StatusCodes.Status429TooManyRequests, "Email queue full");
