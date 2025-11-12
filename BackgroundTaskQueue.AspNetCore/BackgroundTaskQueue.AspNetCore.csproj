@@ -1,11 +1,11 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
-		<TargetFrameworks>net6.0;net8.0;net9.0</TargetFrameworks>
+		<TargetFrameworks>net6.0;net8.0;net9.0;net10.0</TargetFrameworks>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 
 		<Authors>Andrew Heinlein</Authors>
-		<Version>2.1.0</Version>
+		<Version>10.0.0</Version>
 		<Description>Background Task Queue for ASP.NET Core</Description>
 		<PackageId>BackgroundTaskQueue.AspNetCore</PackageId>
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
