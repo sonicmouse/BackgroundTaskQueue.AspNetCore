@@ -50,12 +50,7 @@ namespace BackgroundTaskQueue.AspNetCore
 		long GetActiveCount(string categoryName);
 	}
 
-#if NET7_0_OR_GREATER
-	file
-#else
-	internal
-#endif
-	sealed class OffloadWorkService : BackgroundService, IOffloadWorkService
+	file sealed class OffloadWorkService : BackgroundService, IOffloadWorkService
 	{
 		private const string UnhandledExceptionLogMsg = "Offloaded work threw an unhandled exception.";
 		private const string DispatchLoopErrorLogMsg = "Error in dispatch loop.";
@@ -258,13 +253,18 @@ namespace BackgroundTaskQueue.AspNetCore
 			}
 			else if (isDefaultCategory)
 			{
-				logger.LogError(ex, "[OffloadWorkService] {Message}", message);
+				if (logger.IsEnabled(LogLevel.Error))
+				{
+					logger.LogError(ex, "[OffloadWorkService] {Message}", message);
+				}
 			}
 			else
 			{
-				logger.LogError(ex,
-					"[OffloadWorkService] {Message} (Category: '{CategoryName}')",
+				if (logger.IsEnabled(LogLevel.Error))
+				{
+					logger.LogError(ex, "[OffloadWorkService] {Message} (Category: '{CategoryName}')",
 						message, categoryName);
+				}
 			}
 		}
 	}
@@ -302,7 +302,7 @@ namespace BackgroundTaskQueue.AspNetCore
 
 	public sealed class OffloadWorkServiceCategoryOptions
 	{
-		private readonly Dictionary<string, OffloadWorkServiceOptions> _categories = new();
+		private readonly Dictionary<string, OffloadWorkServiceOptions> _categories = [];
 
 		/// <summary>
 		/// Adds a named category with the specified options.
@@ -359,7 +359,7 @@ namespace BackgroundTaskQueue.AspNetCore
 		{
 			var defaultOptions = new OffloadWorkServiceOptions();
 			config(defaultOptions);
-			return services.AddOffloadWorkService((OffloadWorkServiceCategoryOptions option) =>
+			return services.AddOffloadWorkService(option =>
 				option.AddCategory(DefaultCategoryName, defaultOptions));
 		}
 
@@ -390,12 +390,7 @@ namespace BackgroundTaskQueue.AspNetCore
 		}
 	}
 
-#if NET7_0_OR_GREATER
-file
-#else
-	internal
-#endif
-	sealed class CategoryState
+	file sealed class CategoryState
 	{
 		public string CategoryName { get; }
 		public ActionBlock<Func<Task>> WorkerBlock { get; }
@@ -422,23 +417,12 @@ file
 		}
 	}
 
-
-#if NET7_0_OR_GREATER
-	file
-#else
-	internal
-#endif
-	interface IOffloadWorkServiceState
+	file interface IOffloadWorkServiceState
 	{
 		ConcurrentDictionary<string, CategoryState> CategoryStates { get; }
 	}
 
-#if NET7_0_OR_GREATER
-	file
-#else
-	internal
-#endif
-	sealed class OffloadWorkServiceState : IOffloadWorkServiceState, IDisposable
+	file sealed class OffloadWorkServiceState : IOffloadWorkServiceState, IDisposable
 	{
 		public ConcurrentDictionary<string, CategoryState> CategoryStates { get; } = new();
 
